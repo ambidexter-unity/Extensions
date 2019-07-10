@@ -21,5 +21,28 @@ namespace Extensions
 					throw new NotSupportedException($"Language {raw} is not supported.");
 			}
 		}
+
+		/// <summary>
+		/// Сократить запись числа до указанного количества символов.
+		/// </summary>
+		/// <param name="raw">Исходная строка, содержащая числовое значение.</param>
+		/// <returns>Возвращает преобразованную строку.</returns>
+		public static string ReduceNumber(this string raw)
+		{
+			if (!int.TryParse(raw, out var num)) return raw;
+
+			if (num < 1000) return num.ToString();
+
+			if (num < 1000000)
+			{
+				if (num < 10000) return $"{num / 1000f:F2}K";
+				if (num < 100000) return $"{num / 1000f:F1}K";
+				return $"{Mathf.RoundToInt(num / 1000f)}K";
+			}
+
+			if (num < 10000000) return $"{num / 1000000f:F2}M";
+			if (num < 100000000) return $"{num / 1000000f:F1}M";
+			return $"{Mathf.RoundToInt(num / 1000000f)}M";
+		}
 	}
 }
