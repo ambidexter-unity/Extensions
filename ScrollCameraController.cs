@@ -1,3 +1,6 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -7,7 +10,6 @@ namespace Extensions
     [RequireComponent(typeof(Camera))]
     public class ScrollCameraController : MonoBehaviour
     {
-        // ReSharper disable once InconsistentNaming
         private const float AutoscrollFadeSpeed = 1.3f;
 
         private Camera _camera;
@@ -36,7 +38,6 @@ namespace Extensions
         private float _minFov;
         private float _maxFov;
 
-
 #pragma warning disable 649
         [Header("Lockers"), SerializeField] private bool _lockZoom;
         [SerializeField] private bool _lockScrolling;
@@ -48,6 +49,7 @@ namespace Extensions
         [SerializeField] private float _topBorder;
         [SerializeField] private float _rightBorder;
         [SerializeField] private float _bottomBorder;
+        [SerializeField] private bool _fitInScreen;
 
         [Header("Orthographic settings")]
         [SerializeField]
@@ -64,9 +66,37 @@ namespace Extensions
 
         private Camera Camera => _camera ? _camera : _camera = GetComponent<Camera>();
 
-        private void Start()
+        public bool IsScrolling => _isScrolling || _isAutoScrolling || _isZooming;
+
+        private List<Vector3> _sectorCenters;
+        private Vector3 _currentSector;
+
+        /// <summary>
+        /// Установить список точек, к которым будет центроватся камера
+        /// </summary>
+        /// <param name="centers"></param>
+        public void SetSectorCenters(List<Vector3> centers)
         {
-            if (_focusObject && _focusObjectPosition == null) SetFocusObjectBounds(_focusObject.bounds);
+            _sectorCenters = centers;
+            _currentSector = GetNearestSectorCenterFrom(transform.position);
+            transform.position = FitIntoScrollrect(_currentSector);
+        }
+
+        private Vector3 GetNearestSectorCenterFrom(Vector3 point)
+        {
+            Vector3 result;
+
+            if (_sectorCenters != null && _sectorCenters.Count > 0)
+            {
+                Func<Vector3, float> orderPredicate = sectorPoint => (sectorPoint - transform.position).sqrMagnitude;
+                result = _sectorCenters.OrderBy(orderPredicate).FirstOrDefault();
+            }
+            else
+            {
+                result = point;
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -87,7 +117,7 @@ namespace Extensions
         }
 
         /// <summary>
-        /// ���������� ����.
+        /// Блокировка зума.
         /// </summary>
         public bool LockZoom
         {
@@ -110,50 +140,44 @@ namespace Extensions
         /// <param name="topBorder">Смещение для верхней границы скроллинга.</param>
         /// <param name="rightBorder">Смещение для правой границы скроллинга.</param>
         /// <param name="bottomBorder">Смещение для нижней границы скроллинга.</param>
-        public void SetFocusObjectBounds(Bounds? bounds, float? leftBorder = null,
+		public void SetFocusObjectBounds(Bounds bounds, float? leftBorder = null,
             float? topBorder = null, float? rightBorder = null, float? bottomBorder = null)
         {
-            _focusObjectPosition = bounds?.center;
+            _focusObjectPosition = bounds.center;
 
-            if (_focusObjectPosition != null)
+            _scrollRect = new Rect(bounds.min, bounds.size);
+            _scrollRect.xMin -= leftBorder ?? _leftBorder;
+            _scrollRect.xMax += rightBorder ?? _rightBorder;
+            _scrollRect.yMax += topBorder ?? _topBorder;
+            _scrollRect.yMin -= bottomBorder ?? _bottomBorder;
+
+            if (Camera.orthographic)
             {
-                // ReSharper disable once PossibleInvalidOperationException
-                _scrollRect = new Rect(bounds.Value.min, bounds.Value.size);
-                _scrollRect.xMin -= leftBorder ?? _leftBorder;
-                _scrollRect.xMax += rightBorder ?? _rightBorder;
-                _scrollRect.yMax += topBorder ?? _topBorder;
-                _scrollRect.yMin -= bottomBorder ?? _bottomBorder;
+                Camera.orthographicSize = _maxCameraSize;
+                _screenSize = GetCameraRect(Camera).size;
+                _hScreenSize = _screenSize * 0.5f;
+            }
+            else
+            {
+                Camera.fieldOfView = _maxFieldOfView;
+                _screenSize = GetCameraRect(Camera, _focusObjectPosition.Value).size;
+                _hScreenSize = _screenSize * 0.5f;
             }
 
-            // Calc _maxCamera
-            if (_focusObjectPosition != null &&
-                (_scrollRect.width < _screenSize.x || _scrollRect.height < _screenSize.y))
+            if (_scrollRect.width < _screenSize.x || _scrollRect.height < _screenSize.y)
             {
+                // Calc _maxCamera
                 if (_screenSize.x - _scrollRect.width > _screenSize.y - _scrollRect.height)
                 {
-                    // Подогнать к горизонтальному размру
                     _maxCamera = _scrollRect.width * _screenSize.y / _screenSize.x * 0.5f;
                 }
                 else
                 {
-                    // Подогнать к вертикальному размеру
                     _maxCamera = _scrollRect.height * 0.5f;
                 }
-            }
-            else
-            {
-                _maxCamera = _maxCameraSize;
-            }
-            // \_maxCamera
+                // \_maxCamera
 
-            // Calc _minCamera
-            _minCamera = _minCameraSize > _maxCamera ? _maxCamera : _minCameraSize;
-            // \_minCamera
-
-            // Calc _maxFOV
-            if (_focusObjectPosition != null &&
-                (_scrollRect.width < _screenSize.x || _scrollRect.height < _screenSize.y))
-            {
+                // Calc _maxFOV
                 var v = _focusObjectPosition.Value - Camera.transform.position;
                 if (_scrollRect.width / _scrollRect.height > _screenSize.x / _screenSize.y)
                 {
@@ -164,35 +188,32 @@ namespace Extensions
                     _maxFov = Mathf.Atan2(_scrollRect.width * _screenSize.y / _screenSize.x * 0.5f, v.z)
                               * 2f * Mathf.Rad2Deg;
                 }
+
+                // \_maxFOV
             }
             else
             {
+                _maxCamera = _maxCameraSize;
                 _maxFov = _maxFieldOfView;
             }
-            // \_maxFOV
+
+            // Calc _minCamera
+            _minCamera = _minCameraSize > _maxCamera ? _maxCamera : _minCameraSize;
+            // \_minCamera
 
             // Calc_minFOV 
             _minFov = _minFieldOfView > _maxFov ? _maxFov : _minFieldOfView;
             // \_minFOV
 
-            if (Camera.orthographic)
+            if (_fitInScreen)
             {
-                Camera.orthographicSize = _maxCameraSize;
-                _screenSize = GetCameraRect(Camera).size;
-                _hScreenSize = _screenSize * 0.5f;
-                if (!_maxCamera.Equals(_maxCameraSize))
+                if (Camera.orthographic && !_maxCamera.Equals(_maxCameraSize))
                 {
                     Camera.orthographicSize = _maxCamera;
                     _screenSize = GetCameraRect(Camera).size;
                     _hScreenSize = _screenSize * 0.5f;
                 }
-            }
-            else if (_focusObjectPosition != null)
-            {
-                Camera.fieldOfView = _maxFieldOfView;
-                _screenSize = GetCameraRect(Camera, _focusObjectPosition.Value).size;
-                _hScreenSize = _screenSize * 0.5f;
-                if (!_maxFov.Equals(_maxFieldOfView))
+                else if (!Camera.orthographic && !_maxFov.Equals(_maxFieldOfView))
                 {
                     Camera.fieldOfView = _maxFov;
                     _screenSize = GetCameraRect(Camera, _focusObjectPosition.Value).size;
@@ -202,8 +223,32 @@ namespace Extensions
 
             transform.position = FitIntoScrollrect(transform.position);
         }
+        public static Rect GetCameraRect(Camera camera, Vector3? plane = null)
+        {
+            Vector3 min, max;
+            if (!plane.HasValue)
+            {
+                var nearClipPlane = camera.nearClipPlane;
+                min = new Vector3(0f, 0f, nearClipPlane);
+                max = new Vector3(1f, 1f, nearClipPlane);
+            }
+            else
+            {
+                var v = plane.Value - camera.transform.position;
+                min = new Vector3(0f, 0f, v.z);
+                max = new Vector3(1f, 1f, v.z);
+            }
 
-        public bool IsScrolling => _isScrolling || _isAutoScrolling || _isZooming;
+            var bottomLeft = camera.ViewportToWorldPoint(min);
+            var topRight = camera.ViewportToWorldPoint(max);
+            return new Rect(bottomLeft.x, bottomLeft.y, topRight.x - bottomLeft.x, topRight.y - bottomLeft.y);
+        }
+
+        private void Start()
+        {
+            if (_focusObject && _focusObjectPosition == null)
+                SetFocusObjectBounds(_focusObject.bounds);
+        }
 
         private void OnDestroy()
         {
@@ -212,16 +257,14 @@ namespace Extensions
 
         private void Update()
         {
-            var t = transform;
-
             var touches = TouchHelper.GetTouches();
+
             if (_focusObjectPosition != null && touches.Length > 0)
             {
                 if (!LockZoom && touches.Length > 1)
                 {
                     // zoom
-                    if (Camera.orthographic && _minCamera > 0 && _maxCamera > 0 ||
-                        !Camera.orthographic && _minFov > 0 && _maxFov > 0)
+                    if (Camera.orthographic && _minCamera > 0 && _maxCamera > _minCamera || !Camera.orthographic && _minFov > 0 && _maxFov > _minFov)
                     {
                         var touch1 = touches[0];
                         var touch2 = touches[1];
@@ -235,15 +278,11 @@ namespace Extensions
                                 _startZoomFingerSize = touch1.position - touch2.position;
                                 if (Camera.orthographic)
                                 {
-                                    _startZoomPercent = 1f - Mathf.Clamp01(
-                                                            (Camera.orthographicSize - _minCamera) /
-                                                            (_maxCamera - _minCamera));
+                                    _startZoomPercent = 1f - Mathf.Clamp01((Camera.orthographicSize - _minCamera) / (_maxCamera - _minCamera));
                                 }
                                 else
                                 {
-                                    _startZoomPercent = 1f - Mathf.Clamp01(
-                                                            (Camera.fieldOfView - _minFov) /
-                                                            (_maxFov - _minFov));
+                                    _startZoomPercent = 1f - Mathf.Clamp01(Camera.fieldOfView - _minFov) / (_maxFov - _minFov);
                                 }
 
                                 break;
@@ -271,7 +310,7 @@ namespace Extensions
                                 _isAutoScrolling = false;
                                 _isZooming = false;
                                 _startScrollingPoint = touch.position;
-                                _startScrollingCameraPosition = t.position;
+                                _startScrollingCameraPosition = transform.position;
                             }
 
                             break;
@@ -280,11 +319,18 @@ namespace Extensions
                             _isScrolling = false;
                             _isAutoScrolling = true;
                             _autoscrollDuration = 0;
+
+                            //здесь пересчитать конечный сектор и переписать конечную точку
+                            //Vector3 endPosition = FitIntoScrollrect(transform.position + _scrollAcceleration * AutoscrollFadeSpeed);
+                            //Debug.Log(endPosition);
+
                             break;
                         case TouchPhase.Moved:
                             if (_isScrolling)
                             {
+                                Vector3 preDoScrollPosition = transform.position;
                                 DoScroll(touch.position);
+                                _scrollAcceleration = transform.position - preDoScrollPosition;
                             }
 
                             break;
@@ -294,30 +340,8 @@ namespace Extensions
 
             if (_isAutoScrolling)
             {
-                _autoscrollDuration += Time.deltaTime;
-
-                var delta = Vector3.Lerp(_scrollAcceleration, Vector3.zero,
-                    _autoscrollDuration * AutoscrollFadeSpeed);
-
-                bool boundsReached;
-                t.position = FitIntoScrollrect(t.position + delta, out boundsReached);
-                if (boundsReached || delta.sqrMagnitude < 0.0001f)
-                {
-                    _isAutoScrolling = false;
-                }
+                DoAutoScroll();
             }
-        }
-
-        private void DoScroll(Vector2 p)
-        {
-            Assert.IsTrue(_isScrolling);
-            var t = transform;
-            var offset = _startScrollingPoint - p;
-            var delta = new Vector3(offset.x / Screen.width * _screenSize.x,
-                offset.y / Screen.height * _screenSize.y);
-            var newPosition = FitIntoScrollrect(_startScrollingCameraPosition + delta);
-            _scrollAcceleration = newPosition - t.position;
-            t.position = newPosition;
         }
 
         private void DoZoom(Vector2 p1, Vector2 p2)
@@ -340,6 +364,31 @@ namespace Extensions
             }
 
             CalcScreenSize();
+        }
+
+        private void DoScroll(Vector2 p)
+        {
+            Assert.IsTrue(_isScrolling);
+            var offset = _startScrollingPoint - p;
+            var delta = new Vector3(offset.x / Screen.width * _screenSize.x,
+                offset.y / Screen.height * _screenSize.y);
+            var newPosition = FitIntoScrollrect(_startScrollingCameraPosition + delta);
+            transform.position = newPosition;
+        }
+
+        private void DoAutoScroll()
+        {
+            _autoscrollDuration += Time.deltaTime;
+
+            var delta = Vector3.Lerp(_scrollAcceleration, Vector3.zero,
+                _autoscrollDuration * AutoscrollFadeSpeed);
+
+            bool boundsReached;
+            transform.position = FitIntoScrollrect(transform.position + delta, out boundsReached);
+            if (boundsReached || delta.sqrMagnitude < 0.0001f)
+            {
+                _isAutoScrolling = false;
+            }
         }
 
         private void CalcScreenSize()
@@ -402,27 +451,6 @@ namespace Extensions
             }
 
             return new Vector3(x, y, pos.z);
-        }
-
-        public static Rect GetCameraRect(Camera camera, Vector3? plane = null)
-        {
-            Vector3 min, max;
-            if (!plane.HasValue)
-            {
-                var nearClipPlane = camera.nearClipPlane;
-                min = new Vector3(0f, 0f, nearClipPlane);
-                max = new Vector3(1f, 1f, nearClipPlane);
-            }
-            else
-            {
-                var v = plane.Value - camera.transform.position;
-                min = new Vector3(0f, 0f, v.z);
-                max = new Vector3(1f, 1f, v.z);
-            }
-
-            var bottomLeft = camera.ViewportToWorldPoint(min);
-            var topRight = camera.ViewportToWorldPoint(max);
-            return new Rect(bottomLeft.x, bottomLeft.y, topRight.x - bottomLeft.x, topRight.y - bottomLeft.y);
         }
     }
 }
