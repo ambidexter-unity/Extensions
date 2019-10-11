@@ -10,8 +10,6 @@ namespace Extensions
     [RequireComponent(typeof(Camera))]
     public class ScrollCameraController : MonoBehaviour
     {
-        private const float AutoscrollFadeSpeed = 1.3f;
-
         private Camera _camera;
         private Vector3? _focusObjectPosition;
 
@@ -140,17 +138,15 @@ namespace Extensions
         /// <param name="topBorder">Смещение для верхней границы скроллинга.</param>
         /// <param name="rightBorder">Смещение для правой границы скроллинга.</param>
         /// <param name="bottomBorder">Смещение для нижней границы скроллинга.</param>
-		public void SetFocusObjectBounds(Bounds bounds, float? leftBorder = null,
-            float? topBorder = null, float? rightBorder = null, float? bottomBorder = null)
+        public void SetFocusObjectBounds(Bounds bounds, float? leftBorder = null,
+                    float? topBorder = null, float? rightBorder = null, float? bottomBorder = null)
         {
             _focusObjectPosition = bounds.center;
-
             _scrollRect = new Rect(bounds.min, bounds.size);
             _scrollRect.xMin -= leftBorder ?? _leftBorder;
             _scrollRect.xMax += rightBorder ?? _rightBorder;
             _scrollRect.yMax += topBorder ?? _topBorder;
             _scrollRect.yMin -= bottomBorder ?? _bottomBorder;
-
             if (Camera.orthographic)
             {
                 Camera.orthographicSize = _maxCameraSize;
@@ -163,20 +159,20 @@ namespace Extensions
                 _screenSize = GetCameraRect(Camera, _focusObjectPosition.Value).size;
                 _hScreenSize = _screenSize * 0.5f;
             }
-
             if (_scrollRect.width < _screenSize.x || _scrollRect.height < _screenSize.y)
             {
                 // Calc _maxCamera
                 if (_screenSize.x - _scrollRect.width > _screenSize.y - _scrollRect.height)
                 {
+                    // Подогнать к горизонтальному размру
                     _maxCamera = _scrollRect.width * _screenSize.y / _screenSize.x * 0.5f;
                 }
                 else
                 {
+                    // Подогнать к вертикальному размеру
                     _maxCamera = _scrollRect.height * 0.5f;
                 }
                 // \_maxCamera
-
                 // Calc _maxFOV
                 var v = _focusObjectPosition.Value - Camera.transform.position;
                 if (_scrollRect.width / _scrollRect.height > _screenSize.x / _screenSize.y)
@@ -188,7 +184,6 @@ namespace Extensions
                     _maxFov = Mathf.Atan2(_scrollRect.width * _screenSize.y / _screenSize.x * 0.5f, v.z)
                               * 2f * Mathf.Rad2Deg;
                 }
-
                 // \_maxFOV
             }
             else
@@ -196,15 +191,6 @@ namespace Extensions
                 _maxCamera = _maxCameraSize;
                 _maxFov = _maxFieldOfView;
             }
-
-            // Calc _minCamera
-            _minCamera = _minCameraSize > _maxCamera ? _maxCamera : _minCameraSize;
-            // \_minCamera
-
-            // Calc_minFOV 
-            _minFov = _minFieldOfView > _maxFov ? _maxFov : _minFieldOfView;
-            // \_minFOV
-
             if (_fitInScreen)
             {
                 if (Camera.orthographic && !_maxCamera.Equals(_maxCameraSize))
@@ -220,7 +206,17 @@ namespace Extensions
                     _hScreenSize = _screenSize * 0.5f;
                 }
             }
-
+            else
+            {
+                _maxCamera = Mathf.Max(_maxCamera, _maxCameraSize);
+                _maxFov = Mathf.Max(_maxFov, _maxFieldOfView);
+            }
+            // Calc _minCamera
+            _minCamera = _minCameraSize > _maxCamera ? _maxCamera : _minCameraSize;
+            // \_minCamera
+            // Calc_minFOV
+            _minFov = _minFieldOfView > _maxFov ? _maxFov : _minFieldOfView;
+            // \_minFOV
             transform.position = FitIntoScrollrect(transform.position);
         }
         public static Rect GetCameraRect(Camera camera, Vector3? plane = null)
@@ -319,11 +315,8 @@ namespace Extensions
                             _isScrolling = false;
                             _isAutoScrolling = true;
                             _autoscrollDuration = 0;
-
-                            //здесь пересчитать конечный сектор и переписать конечную точку
-                            //Vector3 endPosition = FitIntoScrollrect(transform.position + _scrollAcceleration * AutoscrollFadeSpeed);
-                            //Debug.Log(endPosition);
-
+                            _autoScrollStartPosition = transform.position;
+                            _autoScrollEndPosition = transform.position + _scrollAcceleration * 3f; // magic Number
                             break;
                         case TouchPhase.Moved:
                             if (_isScrolling)
@@ -343,6 +336,9 @@ namespace Extensions
                 DoAutoScroll();
             }
         }
+
+        private Vector3 _autoScrollStartPosition;
+        private Vector3 _autoScrollEndPosition;
 
         private void DoZoom(Vector2 p1, Vector2 p2)
         {
@@ -380,12 +376,28 @@ namespace Extensions
         {
             _autoscrollDuration += Time.deltaTime;
 
-            var delta = Vector3.Lerp(_scrollAcceleration, Vector3.zero,
-                _autoscrollDuration * AutoscrollFadeSpeed);
+            bool isEndPath = false;
+
+            float time = Vector3.Distance(_autoScrollEndPosition, _autoScrollStartPosition) / 5f; // magic number // убрать дистанс
+
+            Vector3 currentPosition;
+            float lerpValue = _autoscrollDuration / time;
+
+            Debug.Log(lerpValue);
+
+            if (lerpValue > 1)
+            {
+                currentPosition = _autoScrollEndPosition;
+                isEndPath = true;
+            }
+            else
+            {
+                currentPosition = Vector3.Lerp(_autoScrollStartPosition, _autoScrollEndPosition, lerpValue);
+            }
 
             bool boundsReached;
-            transform.position = FitIntoScrollrect(transform.position + delta, out boundsReached);
-            if (boundsReached || delta.sqrMagnitude < 0.0001f)
+            transform.position = FitIntoScrollrect(currentPosition, out boundsReached);
+            if (boundsReached || isEndPath)
             {
                 _isAutoScrolling = false;
             }
