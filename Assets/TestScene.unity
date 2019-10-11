@@ -389,6 +389,7 @@ MonoBehaviour:
   _topBorder: 0
   _rightBorder: 0
   _bottomBorder: 0
+  _fitInScreen: 0
   _minCameraSize: 5
   _maxCameraSize: 5
   _minFieldOfView: 1
