@@ -1,8 +1,7 @@
-using Common.TouchHelper;
 using UnityEngine;
 using UnityEngine.Assertions;
 
-namespace Engine.M3Frontend.Common
+namespace Extensions
 {
 	[DisallowMultipleComponent]
 	[RequireComponent(typeof(Camera))]

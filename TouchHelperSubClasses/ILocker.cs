@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Common.TouchHelper
+namespace Extensions.TouchHelperSubClasses
 {
-	public interface ILocker
+    public interface ILocker
 	{
 		IEnumerable<GameObject> UnlockedObjects { get; }
 	}

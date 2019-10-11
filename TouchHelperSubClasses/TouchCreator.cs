@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 
-// ReSharper disable once CheckNamespace
-namespace Common.TouchHelper
+namespace Extensions.TouchHelperSubClasses
 {
 	internal class TouchCreator
 	{
