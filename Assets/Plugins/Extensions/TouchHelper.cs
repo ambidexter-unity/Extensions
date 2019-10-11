@@ -2,9 +2,10 @@
 using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using Extensions.TouchHelperSubClasses;
 
 // ReSharper disable once CheckNamespace
-namespace Common.TouchHelper
+namespace Extensions
 {
 	/// <summary>
 	/// Вспомогательный класс для имитации тачей в Unity editor-е.

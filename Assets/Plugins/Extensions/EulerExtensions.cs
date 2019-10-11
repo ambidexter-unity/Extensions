@@ -1,8 +1,8 @@
 ﻿using UnityEngine;
 
-namespace Utils.QuaternionUtils
+namespace Extensions
 {
-	public static class EulerExtensions
+    public static class EulerExtensions
 	{
 		public static Vector3 ShortestFrom(this Vector3 to, Quaternion from)
 		{
