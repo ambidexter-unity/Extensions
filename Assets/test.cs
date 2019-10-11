@@ -1,19 +1,19 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using Extensions;
 using UnityEngine;
+using Extensions;
 
-public class test : MonoBehaviour
+public class Test : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
-    {
-        Debug.Log("131".ReduceNumber());
-    }
+    public Transform downLeftPoint;
+    public Transform upRightPoint;
 
-    // Update is called once per frame
-    void Update()
+    private void Start()
     {
-        
+        var cameraController = GetComponent<ScrollCameraController>();
+
+        Bounds bounds = new Bounds();
+        bounds.SetMinMax(downLeftPoint.position, upRightPoint.position);
+        cameraController.SetFocusObjectBounds(bounds);
     }
 }
