@@ -49,6 +49,7 @@ namespace Extensions
         [SerializeField] private float _bottomBorder;
         [SerializeField] private bool _fitInScreen;
 
+
         [Header("Orthographic settings")]
         [SerializeField]
         private float _minCameraSize;
@@ -66,8 +67,17 @@ namespace Extensions
 
         public bool IsScrolling => _isScrolling || _isAutoScrolling || _isZooming;
 
+        private float _autoScrollTimeLenght;
+        [Header("Autoscroll constansts")]
+        [SerializeField] private float _autoScrollAccelerationFactor = 5f;
+        [SerializeField] private float _auvtoScrollTimeFactor = 25f;
+        [SerializeField, Header("AutoScroll curve")]
+        private AnimationCurve _curve;
+
         private List<Vector3> _sectorCenters;
         private Vector3 _currentSector;
+        private Vector3 _autoScrollStartPosition;
+        private Vector3 _autoScrollEndPosition;
 
         /// <summary>
         /// Установить список точек, к которым будет центроватся камера
@@ -316,7 +326,8 @@ namespace Extensions
                             _isAutoScrolling = true;
                             _autoscrollDuration = 0;
                             _autoScrollStartPosition = transform.position;
-                            _autoScrollEndPosition = transform.position + _scrollAcceleration * 3f; // magic Number
+                            _autoScrollEndPosition = transform.position + _scrollAcceleration * _autoScrollAccelerationFactor;
+                            _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
                             break;
                         case TouchPhase.Moved:
                             if (_isScrolling)
@@ -336,10 +347,6 @@ namespace Extensions
                 DoAutoScroll();
             }
         }
-
-        private Vector3 _autoScrollStartPosition;
-        private Vector3 _autoScrollEndPosition;
-
         private void DoZoom(Vector2 p1, Vector2 p2)
         {
             Assert.IsTrue(_isZooming);
@@ -376,28 +383,23 @@ namespace Extensions
         {
             _autoscrollDuration += Time.deltaTime;
 
-            bool isEndPath = false;
-
-            float time = Vector3.Distance(_autoScrollEndPosition, _autoScrollStartPosition) / 5f; // magic number // убрать дистанс
-
             Vector3 currentPosition;
-            float lerpValue = _autoscrollDuration / time;
-
-            Debug.Log(lerpValue);
+            float lerpValue = _autoscrollDuration / _autoScrollTimeLenght;
 
             if (lerpValue > 1)
             {
                 currentPosition = _autoScrollEndPosition;
-                isEndPath = true;
+                _isAutoScrolling = false;
             }
             else
             {
-                currentPosition = Vector3.Lerp(_autoScrollStartPosition, _autoScrollEndPosition, lerpValue);
+                float curve = _curve.Evaluate(lerpValue);
+                currentPosition = Vector3.Lerp(_autoScrollStartPosition, _autoScrollEndPosition, curve);
             }
 
             bool boundsReached;
             transform.position = FitIntoScrollrect(currentPosition, out boundsReached);
-            if (boundsReached || isEndPath)
+            if (boundsReached)
             {
                 _isAutoScrolling = false;
             }
@@ -416,8 +418,7 @@ namespace Extensions
             }
 
             _hScreenSize = _screenSize * 0.5f;
-            var t = transform;
-            t.position = FitIntoScrollrect(t.position);
+            transform.position = FitIntoScrollrect(transform.position);
         }
 
         private Vector3 FitIntoScrollrect(Vector3 pos)
