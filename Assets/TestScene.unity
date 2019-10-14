@@ -390,10 +390,36 @@ MonoBehaviour:
   _rightBorder: 0
   _bottomBorder: 0
   _fitInScreen: 0
+  _curve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   _minCameraSize: 5
   _maxCameraSize: 5
   _minFieldOfView: 1
   _maxFieldOfView: 10
+  _autoScrollAccelerationFactor: 10
+  _auvtoScrollTimeFactor: 100
 --- !u!81 &1356450600
 AudioListener:
   m_ObjectHideFlags: 0
