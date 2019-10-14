@@ -61,7 +61,6 @@ namespace Extensions
         private float _minFieldOfView;
 
         [SerializeField] private float _maxFieldOfView;
-#pragma warning restore 649
 
         private Camera Camera => _camera ? _camera : _camera = GetComponent<Camera>();
 
@@ -71,11 +70,12 @@ namespace Extensions
         [Header("Autoscroll constansts")]
         [SerializeField] private float _autoScrollAccelerationFactor = 5f;
         [SerializeField] private float _auvtoScrollTimeFactor = 25f;
-        [SerializeField, Header("AutoScroll curve")]
-        private AnimationCurve _curve;
+        [SerializeField] private float _autoScrollMaxLenghTime = 3f;
+        [Header("AutoScroll curve")]
+        [SerializeField] private AnimationCurve _curve;
+#pragma warning restore 649
 
         private List<Vector3> _sectorCenters;
-        private Vector3 _currentSector;
         private Vector3 _autoScrollStartPosition;
         private Vector3 _autoScrollEndPosition;
 
@@ -85,9 +85,13 @@ namespace Extensions
         /// <param name="centers"></param>
         public void SetSectorCenters(List<Vector3> centers)
         {
-            _sectorCenters = centers;
-            _currentSector = GetNearestSectorCenterFrom(transform.position);
-            transform.position = FitIntoScrollrect(_currentSector);
+            List<Vector3> correctCenters = centers.Select(center => new Vector3(center.x, center.y, transform.position.z)).ToList();
+
+            _sectorCenters = correctCenters;
+
+            Vector3 currentSector = GetNearestSectorCenterFrom(transform.position);
+
+            transform.position = FitIntoScrollrect(currentSector);
         }
 
         private Vector3 GetNearestSectorCenterFrom(Vector3 point)
@@ -96,8 +100,8 @@ namespace Extensions
 
             if (_sectorCenters != null && _sectorCenters.Count > 0)
             {
-                Func<Vector3, float> orderPredicate = sectorPoint => (sectorPoint - transform.position).sqrMagnitude;
-                result = _sectorCenters.OrderBy(orderPredicate).FirstOrDefault();
+                Func<Vector3, float> orderPredicate = sectorPoint => (sectorPoint - point).sqrMagnitude;
+                result = _sectorCenters.OrderBy(orderPredicate).First();
             }
             else
             {
@@ -326,15 +330,18 @@ namespace Extensions
                             _isAutoScrolling = true;
                             _autoscrollDuration = 0;
                             _autoScrollStartPosition = transform.position;
-                            _autoScrollEndPosition = transform.position + _scrollAcceleration * _autoScrollAccelerationFactor;
+
+                            _autoScrollEndPosition = transform.position + (_scrollAcceleration * _autoScrollAccelerationFactor);
+                            _autoScrollEndPosition = GetNearestSectorCenterFrom(_autoScrollEndPosition);
+
                             _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
+                            _autoScrollTimeLenght = _autoScrollTimeLenght < _autoScrollMaxLenghTime ? _autoScrollTimeLenght : _autoScrollMaxLenghTime;
                             break;
                         case TouchPhase.Moved:
                             if (_isScrolling)
                             {
-                                Vector3 preDoScrollPosition = transform.position;
+                                _scrollAcceleration = touch.deltaPosition * (-1f);
                                 DoScroll(touch.position);
-                                _scrollAcceleration = transform.position - preDoScrollPosition;
                             }
 
                             break;
