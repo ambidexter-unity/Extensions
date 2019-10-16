@@ -75,9 +75,12 @@ namespace Extensions
         [SerializeField] private AnimationCurve _curve;
 #pragma warning restore 649
 
-        private List<Vector3> _sectorCenters;
         private Vector3 _autoScrollStartPosition;
         private Vector3 _autoScrollEndPosition;
+
+        private List<Vector3> _sectorCenters = new List<Vector3>();
+        private Vector3 _currentSector = Vector3.zero;
+        public Vector3 CurrentCenter => _currentSector;
 
         /// <summary>
         /// Установить список точек, к которым будет центроватся камера
@@ -89,12 +92,32 @@ namespace Extensions
 
             _sectorCenters = correctCenters;
 
-            Vector3 currentSector = GetNearestSectorCenterFrom(transform.position);
+            //Vector3 currentSector = GetNearestSectorCenterFrom(transform.position);
 
-            transform.position = FitIntoScrollrect(currentSector);
+            //transform.position = FitIntoScrollrect(transform.position);
         }
 
-        private Vector3 GetNearestSectorCenterFrom(Vector3 point)
+        public void AutoScrollTo(Vector3 target/*, bool calculateNearestCenter = true*/)
+        {
+            Vector3 autoScrollEndPosition = /*calculateNearestCenter ? */GetNearestSectorCenterFrom(target) /*: target*/;
+            autoScrollEndPosition.z = transform.position.z;
+
+            if (autoScrollEndPosition != _currentSector)
+            {
+                _autoScrollEndPosition = autoScrollEndPosition;
+
+                _isScrolling = false;
+                _isAutoScrolling = true;
+
+                _autoscrollDuration = 0;
+                _autoScrollStartPosition = transform.position;
+
+                _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
+                _autoScrollTimeLenght = _autoScrollTimeLenght < _autoScrollMaxLenghTime ? _autoScrollTimeLenght : _autoScrollMaxLenghTime;
+            }
+        }
+
+        public Vector3 GetNearestSectorCenterFrom(Vector3 point)
         {
             Vector3 result;
 
@@ -409,6 +432,11 @@ namespace Extensions
             if (boundsReached)
             {
                 _isAutoScrolling = false;
+            }
+
+            if (_isAutoScrolling == false)
+            {
+                _currentSector = _autoScrollEndPosition;
             }
         }
 
