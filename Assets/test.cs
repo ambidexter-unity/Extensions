@@ -5,7 +5,7 @@ using Extensions;
 using System.Linq;
 using System;
 
-public class Test : MonoBehaviour
+public class test : MonoBehaviour
 {
     public Transform downLeftPoint;
     public Transform upRightPoint;
@@ -22,10 +22,10 @@ public class Test : MonoBehaviour
         List<Vector3> sectorCentersPositions = SectorCenters.Select(go => go.transform.position).ToList();
         cameraController.SetSectorCenters(sectorCentersPositions);
 
-        StartCoroutine(Delay(3f, () =>
-        {
-            cameraController.AutoScrollTo(new Vector3(5f,5f,0f));
-        }));
+        //StartCoroutine(Delay(3f, () =>
+        //{
+        //    cameraController.AutoScrollTo(new Vector3(5f,5f,0f));
+        //}));
     }
 
     IEnumerator Delay(float time, Action callback)
