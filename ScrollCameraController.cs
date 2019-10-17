@@ -474,10 +474,10 @@ namespace Extensions
 
             bool boundsReached;
             transform.position = FitIntoScrollrect(currentPosition, out boundsReached);
-            if (boundsReached)
-            {
-                _isAutoScrolling = false;
-            }
+            //if (boundsReached) // TODO: взять у Яши последнюю версию метода FitIntoScrollrect и переделать!
+            //{
+            //    _isAutoScrolling = false;
+            //}
 
             if (_isAutoScrolling == false)
             {
