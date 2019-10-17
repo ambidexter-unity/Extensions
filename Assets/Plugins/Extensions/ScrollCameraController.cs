@@ -72,6 +72,7 @@ namespace Extensions
         [SerializeField] private float _autoScrollAccelerationFactor = 5f;
         [SerializeField] private float _auvtoScrollTimeFactor = 25f;
         [SerializeField] private float _autoScrollMaxLenghTime = 3f;
+        [SerializeField] private float _autoScrollDeltaLevel = 1500f; // минимальная амплитуда, при которой начнется автоскроллинг. Запускается только при залоченном скроллинге и разлоченном автоскроллинге. 
         [Header("AutoScroll curve")]
         [SerializeField] private AnimationCurve _curve;
 #pragma warning restore 649
@@ -396,7 +397,7 @@ namespace Extensions
                             {
                                 _scrollAcceleration = (touch.position - _startScrollingPoint) * (-1f);
 
-                                if (LockScrolling && _scrollAcceleration.sqrMagnitude > 1500 && _isAutoScrolling == false)
+                                if (LockScrolling == true && _isAutoScrolling == false && _scrollAcceleration.sqrMagnitude > _autoScrollDeltaLevel)
                                 {
                                     _isScrolling = false;
                                     _isAutoScrolling = true;
@@ -408,7 +409,6 @@ namespace Extensions
 
                                     _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
                                     _autoScrollTimeLenght = _autoScrollTimeLenght < _autoScrollMaxLenghTime ? _autoScrollTimeLenght : _autoScrollMaxLenghTime;
-
                                 }
                             }
 
