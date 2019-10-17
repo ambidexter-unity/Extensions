@@ -39,6 +39,7 @@ namespace Extensions
 #pragma warning disable 649
         [Header("Lockers"), SerializeField] private bool _lockZoom;
         [SerializeField] private bool _lockScrolling;
+        [SerializeField] private bool _lockAutoScrolling;
 
         [Header("Focus object"), SerializeField]
         private MeshRenderer _focusObject;
@@ -149,6 +150,23 @@ namespace Extensions
                 }
             }
             private get => _lockScrolling;
+        }
+
+        /// <summary>
+        /// Блокировка автоскроллинга.
+        /// </summary>
+        public bool LockAutoScrolling
+        {
+            set
+            {
+                _lockAutoScrolling = value;
+                if (_lockAutoScrolling)
+                {
+                    _isAutoScrolling = false;
+                    _lockAutoScrolling = false;
+                }
+            }
+            private get => _lockAutoScrolling;
         }
 
         /// <summary>
@@ -345,26 +363,53 @@ namespace Extensions
                                 _startScrollingPoint = touch.position;
                                 _startScrollingCameraPosition = transform.position;
                             }
+                            else
+                            {
+                                _startScrollingPoint = touch.position;
+                                _startScrollingCameraPosition = transform.position;
+                            }
 
                             break;
                         case TouchPhase.Ended:
                         case TouchPhase.Canceled:
-                            _isScrolling = false;
-                            _isAutoScrolling = true;
-                            _autoscrollDuration = 0;
-                            _autoScrollStartPosition = transform.position;
+                            if (_isAutoScrolling == false)
+                            {
+                                _isScrolling = false;
+                                _isAutoScrolling = true;
+                                _autoscrollDuration = 0;
+                                _autoScrollStartPosition = transform.position;
 
-                            _autoScrollEndPosition = transform.position + (_scrollAcceleration * _autoScrollAccelerationFactor);
-                            _autoScrollEndPosition = GetNearestSectorCenterFrom(_autoScrollEndPosition);
+                                _autoScrollEndPosition = transform.position + (_scrollAcceleration * _autoScrollAccelerationFactor);
+                                _autoScrollEndPosition = GetNearestSectorCenterFrom(_autoScrollEndPosition);
 
-                            _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
-                            _autoScrollTimeLenght = _autoScrollTimeLenght < _autoScrollMaxLenghTime ? _autoScrollTimeLenght : _autoScrollMaxLenghTime;
+                                _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
+                                _autoScrollTimeLenght = _autoScrollTimeLenght < _autoScrollMaxLenghTime ? _autoScrollTimeLenght : _autoScrollMaxLenghTime;
+                            }
                             break;
                         case TouchPhase.Moved:
                             if (_isScrolling)
                             {
                                 _scrollAcceleration = touch.deltaPosition * (-1f);
                                 DoScroll(touch.position);
+                            }
+                            else
+                            {
+                                _scrollAcceleration = (touch.position - _startScrollingPoint) * (-1f);
+
+                                if (LockScrolling && _scrollAcceleration.sqrMagnitude > 1500 && _isAutoScrolling == false)
+                                {
+                                    _isScrolling = false;
+                                    _isAutoScrolling = true;
+                                    _autoscrollDuration = 0;
+                                    _autoScrollStartPosition = transform.position;
+
+                                    _autoScrollEndPosition = transform.position + (_scrollAcceleration * _autoScrollAccelerationFactor);
+                                    _autoScrollEndPosition = GetNearestSectorCenterFrom(_autoScrollEndPosition);
+
+                                    _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
+                                    _autoScrollTimeLenght = _autoScrollTimeLenght < _autoScrollMaxLenghTime ? _autoScrollTimeLenght : _autoScrollMaxLenghTime;
+
+                                }
                             }
 
                             break;
