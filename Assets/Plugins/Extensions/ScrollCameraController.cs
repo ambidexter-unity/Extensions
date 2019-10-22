@@ -348,7 +348,6 @@ namespace Extensions
                 {
                     // scroll
                     var touch = touches[0];
-                    Debug.Log(TouchHelper.IsPointerOverUiObject());
                     if (!TouchHelper.IsPointerOverUiObject())
                     {
                         switch (touch.phase)
