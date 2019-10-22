@@ -93,15 +93,11 @@ namespace Extensions
             List<Vector3> correctCenters = centers.Select(center => new Vector3(center.x, center.y, transform.position.z)).ToList();
 
             _sectorCenters = correctCenters;
-
-            //Vector3 currentSector = GetNearestSectorCenterFrom(transform.position);
-
-            //transform.position = FitIntoScrollrect(transform.position);
         }
 
-        public void AutoScrollTo(Vector3 target/*, bool calculateNearestCenter = true*/)
+        public void AutoScrollTo(Vector3 target)
         {
-            Vector3 autoScrollEndPosition = /*calculateNearestCenter ? */GetNearestSectorCenterFrom(target) /*: target*/;
+            Vector3 autoScrollEndPosition = GetNearestSectorCenterFrom(target);
             autoScrollEndPosition.z = transform.position.z;
 
             if (autoScrollEndPosition != _currentSector)
@@ -352,52 +348,30 @@ namespace Extensions
                 {
                     // scroll
                     var touch = touches[0];
-
-                    switch (touch.phase)
+                    Debug.Log(TouchHelper.IsPointerOverUiObject());
+                    if (!TouchHelper.IsPointerOverUiObject())
                     {
-                        case TouchPhase.Began:
-                            if (!LockScrolling && !TouchHelper.IsPointerOverUiObject())
-                            {
-                                _isScrolling = true;
-                                _isAutoScrolling = false;
-                                _isZooming = false;
-                                _startScrollingPoint = touch.position;
-                                _startScrollingCameraPosition = transform.position;
-                            }
-                            else
-                            {
-                                _startScrollingPoint = touch.position;
-                                _startScrollingCameraPosition = transform.position;
-                            }
+                        switch (touch.phase)
+                        {
+                            case TouchPhase.Began:
+                                if (!LockScrolling && !TouchHelper.IsPointerOverUiObject())
+                                {
+                                    _isScrolling = true;
+                                    _isAutoScrolling = false;
+                                    _isZooming = false;
+                                    _startScrollingPoint = touch.position;
+                                    _startScrollingCameraPosition = transform.position;
+                                }
+                                else
+                                {
+                                    _startScrollingPoint = touch.position;
+                                    _startScrollingCameraPosition = transform.position;
+                                }
 
-                            break;
-                        case TouchPhase.Ended:
-                        case TouchPhase.Canceled:
-                            if (_isAutoScrolling == false)
-                            {
-                                _isScrolling = false;
-                                _isAutoScrolling = true;
-                                _autoscrollDuration = 0;
-                                _autoScrollStartPosition = transform.position;
-
-                                _autoScrollEndPosition = transform.position + (_scrollAcceleration * _autoScrollAccelerationFactor);
-                                _autoScrollEndPosition = GetNearestSectorCenterFrom(_autoScrollEndPosition);
-
-                                _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
-                                _autoScrollTimeLenght = _autoScrollTimeLenght < _autoScrollMaxLenghTime ? _autoScrollTimeLenght : _autoScrollMaxLenghTime;
-                            }
-                            break;
-                        case TouchPhase.Moved:
-                            if (_isScrolling)
-                            {
-                                _scrollAcceleration = touch.deltaPosition * (-1f);
-                                DoScroll(touch.position);
-                            }
-                            else
-                            {
-                                _scrollAcceleration = (touch.position - _startScrollingPoint) * (-1f);
-
-                                if (LockScrolling == true && _isAutoScrolling == false && _scrollAcceleration.sqrMagnitude > _autoScrollDeltaLevel)
+                                break;
+                            case TouchPhase.Ended:
+                            case TouchPhase.Canceled:
+                                if (_isAutoScrolling == false)
                                 {
                                     _isScrolling = false;
                                     _isAutoScrolling = true;
@@ -410,9 +384,34 @@ namespace Extensions
                                     _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
                                     _autoScrollTimeLenght = _autoScrollTimeLenght < _autoScrollMaxLenghTime ? _autoScrollTimeLenght : _autoScrollMaxLenghTime;
                                 }
-                            }
+                                break;
+                            case TouchPhase.Moved:
+                                if (_isScrolling)
+                                {
+                                    _scrollAcceleration = touch.deltaPosition * (-1f);
+                                    DoScroll(touch.position);
+                                }
+                                else
+                                {
+                                    _scrollAcceleration = (touch.position - _startScrollingPoint) * (-1f);
 
-                            break;
+                                    if (LockScrolling == true && _isAutoScrolling == false && _scrollAcceleration.sqrMagnitude > _autoScrollDeltaLevel)
+                                    {
+                                        _isScrolling = false;
+                                        _isAutoScrolling = true;
+                                        _autoscrollDuration = 0;
+                                        _autoScrollStartPosition = transform.position;
+
+                                        _autoScrollEndPosition = transform.position + (_scrollAcceleration * _autoScrollAccelerationFactor);
+                                        _autoScrollEndPosition = GetNearestSectorCenterFrom(_autoScrollEndPosition);
+
+                                        _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
+                                        _autoScrollTimeLenght = _autoScrollTimeLenght < _autoScrollMaxLenghTime ? _autoScrollTimeLenght : _autoScrollMaxLenghTime;
+                                    }
+                                }
+
+                                break;
+                        }
                     }
                 }
             }
