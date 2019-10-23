@@ -40,6 +40,8 @@ namespace Extensions
         [Header("Lockers"), SerializeField] private bool _lockZoom;
         [SerializeField] private bool _lockScrolling;
         [SerializeField] private bool _lockAutoScrolling;
+        [SerializeField] private bool _autoScrollingToNearestSector = false;
+
 
         [Header("Focus object"), SerializeField]
         private MeshRenderer _focusObject;
@@ -95,9 +97,12 @@ namespace Extensions
             _sectorCenters = correctCenters;
         }
 
-        public void AutoScrollTo(Vector3 target)
+        public void AutoScrollTo(Vector3 target, bool autoScrollingToNearestSector = true)
         {
-            Vector3 autoScrollEndPosition = GetNearestSectorCenterFrom(target);
+            Vector3 autoScrollEndPosition = target;
+            if (autoScrollingToNearestSector)
+                autoScrollEndPosition = GetNearestSectorCenterFrom(autoScrollEndPosition);
+
             autoScrollEndPosition.z = transform.position.z;
 
             if (autoScrollEndPosition != _currentSector)
@@ -164,6 +169,19 @@ namespace Extensions
                 }
             }
             private get => _lockAutoScrolling;
+        }
+
+        public bool AutoScrollingToNearestSector
+        {
+            set
+            {
+                _autoScrollingToNearestSector = value;
+            }
+            private get
+            {
+                return _autoScrollingToNearestSector;
+            }
+
         }
 
         /// <summary>
@@ -373,15 +391,18 @@ namespace Extensions
                                 if (_isAutoScrolling == false)
                                 {
                                     _isScrolling = false;
-                                    _isAutoScrolling = true;
-                                    _autoscrollDuration = 0;
-                                    _autoScrollStartPosition = transform.position;
+                                    if (LockAutoScrolling)
+                                    {
+                                        _isAutoScrolling = true;
+                                        _autoscrollDuration = 0;
+                                        _autoScrollStartPosition = transform.position;
 
-                                    _autoScrollEndPosition = transform.position + (_scrollAcceleration * _autoScrollAccelerationFactor);
-                                    _autoScrollEndPosition = GetNearestSectorCenterFrom(_autoScrollEndPosition);
+                                        _autoScrollEndPosition = transform.position + (_scrollAcceleration * _autoScrollAccelerationFactor);
+                                        _autoScrollEndPosition = GetNearestSectorCenterFrom(_autoScrollEndPosition);
 
-                                    _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
-                                    _autoScrollTimeLenght = _autoScrollTimeLenght < _autoScrollMaxLenghTime ? _autoScrollTimeLenght : _autoScrollMaxLenghTime;
+                                        _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
+                                        _autoScrollTimeLenght = _autoScrollTimeLenght < _autoScrollMaxLenghTime ? _autoScrollTimeLenght : _autoScrollMaxLenghTime;
+                                    }
                                 }
                                 break;
                             case TouchPhase.Moved:
@@ -402,7 +423,8 @@ namespace Extensions
                                         _autoScrollStartPosition = transform.position;
 
                                         _autoScrollEndPosition = transform.position + (_scrollAcceleration * _autoScrollAccelerationFactor);
-                                        _autoScrollEndPosition = GetNearestSectorCenterFrom(_autoScrollEndPosition);
+                                        if (AutoScrollingToNearestSector)
+                                            _autoScrollEndPosition = GetNearestSectorCenterFrom(_autoScrollEndPosition);
 
                                         _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
                                         _autoScrollTimeLenght = _autoScrollTimeLenght < _autoScrollMaxLenghTime ? _autoScrollTimeLenght : _autoScrollMaxLenghTime;
