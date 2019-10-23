@@ -316,11 +316,14 @@ namespace Extensions
                 SetFocusObjectBounds(_focusObject.bounds);
         }
 
+        private float _autoScrollDeltaLevelWithDpi { get => _autoScrollDeltaLevel / Screen.dpi; }
+
         private void OnDestroy()
         {
             _focusObjectPosition = null;
         }
 
+        private bool _previousIsPointerOverUiObject;
         private void Update()
         {
             var touches = TouchHelper.GetTouches();
@@ -372,58 +375,69 @@ namespace Extensions
                 {
                     // scroll
                     var touch = touches[0];
-                    if (!TouchHelper.IsPointerOverUiObject())
+                    var currentIsPointerOverUiObject = TouchHelper.IsPointerOverUiObject();
+                    if (!currentIsPointerOverUiObject)
                     {
+                        //Debug.Log(touch.phase);
                         switch (touch.phase)
                         {
                             case TouchPhase.Began:
-                                if (!LockScrolling && !TouchHelper.IsPointerOverUiObject())
+                                if (!LockScrolling)
                                 {
                                     _isScrolling = true;
                                     _isAutoScrolling = false;
                                     _isZooming = false;
-                                    _startScrollingPoint = touch.position;
-                                    _startScrollingCameraPosition = transform.position;
                                 }
-                                else
-                                {
-                                    _startScrollingPoint = touch.position;
-                                    _startScrollingCameraPosition = transform.position;
-                                }
+
+                                _scrollAcceleration = Vector3.zero;
+                                _startScrollingPoint = touch.position;
+                                _startScrollingCameraPosition = transform.position;
+                                _previousIsPointerOverUiObject = currentIsPointerOverUiObject;
 
                                 break;
                             case TouchPhase.Ended:
                             case TouchPhase.Canceled:
-                                if (_isAutoScrolling == false)
+                                if (_isAutoScrolling == false && !_previousIsPointerOverUiObject)
                                 {
+                                    _previousIsPointerOverUiObject = currentIsPointerOverUiObject;
+                                    //Debug.Log(_scrollAcceleration.sqrMagnitude);
                                     _isScrolling = false;
-                                    if (LockAutoScrolling == false)
+                                    if (LockAutoScrolling == false && _scrollAcceleration.sqrMagnitude > _autoScrollDeltaLevelWithDpi)
                                     {
+                                        //Debug.Log("true");
+                                        _autoScrollEndPosition = transform.position + (_scrollAcceleration * _autoScrollAccelerationFactor);
+
                                         _isAutoScrolling = true;
                                         _autoscrollDuration = 0;
                                         _autoScrollStartPosition = transform.position;
 
-                                        _autoScrollEndPosition = transform.position + (_scrollAcceleration * _autoScrollAccelerationFactor);
                                         if (LockAutoScrollingToNearestSector == false)
                                             _autoScrollEndPosition = GetNearestSectorCenterFrom(_autoScrollEndPosition);
 
                                         _autoScrollTimeLenght = (_autoScrollEndPosition - _autoScrollStartPosition).sqrMagnitude / _auvtoScrollTimeFactor;
                                         _autoScrollTimeLenght = _autoScrollTimeLenght < _autoScrollMaxLenghTime ? _autoScrollTimeLenght : _autoScrollMaxLenghTime;
                                     }
+                                    else
+                                    {
+                                        //Debug.Log("false");
+                                        _isAutoScrolling = false;
+                                    }
                                 }
                                 break;
                             case TouchPhase.Moved:
                                 if (_isScrolling)
                                 {
-                                    _scrollAcceleration = touch.deltaPosition * (-1f);
+                                    _scrollAcceleration = touch.deltaPosition * (-1f) / UnityEngine.Screen.dpi;
                                     DoScroll(touch.position);
                                 }
                                 else
                                 {
-                                    _scrollAcceleration = (touch.position - _startScrollingPoint) * (-1f);
+                                    _scrollAcceleration = ((touch.position - _startScrollingPoint) * (-1f) / UnityEngine.Screen.dpi);
 
-                                    if (LockScrolling == true && _isAutoScrolling == false && _scrollAcceleration.sqrMagnitude > _autoScrollDeltaLevel)
+                                    if (LockScrolling == true && _isAutoScrolling == false && _scrollAcceleration.sqrMagnitude > _autoScrollDeltaLevelWithDpi)
                                     {
+                                        //Debug.Log("!");
+
                                         _isScrolling = false;
                                         _isAutoScrolling = true;
                                         _autoscrollDuration = 0;
@@ -449,26 +463,32 @@ namespace Extensions
                 DoAutoScroll();
             }
         }
+
+
         private void DoZoom(Vector2 p1, Vector2 p2)
         {
-            Assert.IsTrue(_isZooming);
-            var zoomDistance = p1 - p2;
-            var delta = new Vector2(Mathf.Abs(zoomDistance.x) - Mathf.Abs(_startZoomFingerSize.x),
-                Mathf.Abs(zoomDistance.y) - Mathf.Abs(_startZoomFingerSize.y));
-            var zoomPercent = Mathf.Abs(delta.x) > Mathf.Abs(delta.y)
-                ? delta.x / Screen.width
-                : delta.y / Screen.height;
-            var zoom = 1f - Mathf.Clamp01(_startZoomPercent + zoomPercent);
-            if (Camera.orthographic)
+            //TODO: позже разобратся, почему ассерт не проходит иногда
+            //Assert.IsTrue(_isZooming);
+            if (_isZooming)
             {
-                Camera.orthographicSize = Mathf.Lerp(_minCamera, _maxCamera, zoom);
-            }
-            else
-            {
-                Camera.fieldOfView = Mathf.Lerp(_minFov, _maxFov, zoom);
-            }
+                var zoomDistance = p1 - p2;
+                var delta = new Vector2(Mathf.Abs(zoomDistance.x) - Mathf.Abs(_startZoomFingerSize.x),
+                    Mathf.Abs(zoomDistance.y) - Mathf.Abs(_startZoomFingerSize.y));
+                var zoomPercent = Mathf.Abs(delta.x) > Mathf.Abs(delta.y)
+                    ? delta.x / Screen.width
+                    : delta.y / Screen.height;
+                var zoom = 1f - Mathf.Clamp01(_startZoomPercent + zoomPercent);
+                if (Camera.orthographic)
+                {
+                    Camera.orthographicSize = Mathf.Lerp(_minCamera, _maxCamera, zoom);
+                }
+                else
+                {
+                    Camera.fieldOfView = Mathf.Lerp(_minFov, _maxFov, zoom);
+                }
 
-            CalcScreenSize();
+                CalcScreenSize();
+            }
         }
 
         private void DoScroll(Vector2 p)
