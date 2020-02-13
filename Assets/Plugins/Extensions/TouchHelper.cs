@@ -9,7 +9,6 @@ namespace Extensions
     /// <summary>
     /// Вспомогательный класс для имитации тачей в Unity editor-е.
     /// </summary>
-    public static class TouchHelper
     {
         private static readonly TouchCreator LastFakeTouch = new TouchCreator();
         private static readonly TouchCreator ZoomGestureTouch1 = new TouchCreator();
@@ -45,7 +44,7 @@ namespace Extensions
         /// <summary>
         /// Флаг, указывающий на наличие блокировки тачей.
         /// </summary>
-        public static bool IsLocked => Lockers.Any();
+        public static bool IsLocked => Lockers.Count > 0;
         /// <summary>
         /// Получить все текущие тачи.
         /// </summary>
