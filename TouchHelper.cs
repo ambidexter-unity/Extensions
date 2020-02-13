@@ -45,7 +45,7 @@ namespace Extensions
         /// <summary>
         /// Флаг, указывающий на наличие блокировки тачей.
         /// </summary>
-        public static bool IsLocked => Lockers.Any();
+        public static bool IsLocked => Lockers.Count > 0;
         /// <summary>
         /// Получить все текущие тачи.
         /// </summary>
