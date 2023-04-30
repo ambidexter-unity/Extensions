@@ -118,7 +118,7 @@ namespace Extensions
         private static bool MakeFakeTouch(out bool isZoomGesture)
         {
             isZoomGesture = false;
-            if (Input.touchSupported) return false;
+            if (SystemInfo.operatingSystemFamily == OperatingSystemFamily.Other) return false;
             if (Input.GetMouseButtonDown(0))
             {
                 LastFakeTouch.Phase = TouchPhase.Began;
